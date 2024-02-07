@@ -1,34 +1,87 @@
-
+// main.go
 package main
 
-
-// Import Packages
-
-
 import (
-    "context"
+    "encoding/json"
     "fmt"
     "log"
-	"time"
-	"encoding/json"
-    "errors"
-	"net/http"
-    "github.com/gin-gonic/gin"
-    "go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-    "go.mongodb.org/mongo-driver/mongo/options"
-	"github.com/gorilla/mux"
+    "io/ioutil"
+    "net/http"
+    "github.com/gorilla/mux"
 )
 
-type book struct{
-    ID        string  `json:"id"`
-    Title     string  `json:"title"`
-    Author    string  `json:"author"`
-    Quantity  int     `json:"quantity"`
+// Article - Our struct for all articles
+type Article struct {
+    Id      string    `json:"Id"`
+    Title   string `json:"Title"`
+    Desc    string `json:"desc"`
+    Content string `json:"content"`
 }
 
-var books = []book{
-	{ID: "1", Title: "In Search of Lost Time", Author: "Marcel Proust", Quantity: 2},
-	{ID: "2", Title: "The Great Gatsby", Author: "F. Scott Fitzgerald", Quantity: 5},
-	{ID: "3", Title: "War and Peace", Author: "Leo Tolstoy", Quantity: 6},
+var Articles []Article
+
+func homePage(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "Welcome to the HomePage!")
+    fmt.Println("Endpoint Hit: homePage")
+}
+
+func returnAllArticles(w http.ResponseWriter, r *http.Request) {
+    fmt.Println("Endpoint Hit: returnAllArticles")
+    json.NewEncoder(w).Encode(Articles)
+}
+
+func returnSingleArticle(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    key := vars["id"]
+
+    for _, article := range Articles {
+        if article.Id == key {
+            json.NewEncoder(w).Encode(article)
+        }
+    }
+}
+
+
+func createNewArticle(w http.ResponseWriter, r *http.Request) {
+    // get the body of our POST request
+    // unmarshal this into a new Article struct
+    // append this to our Articles array.    
+    reqBody, _ := ioutil.ReadAll(r.Body)
+    var article Article 
+    json.Unmarshal(reqBody, &article)
+    // update our global Articles array to include
+    // our new Article
+    Articles = append(Articles, article)
+
+    json.NewEncoder(w).Encode(article)
+}
+
+func deleteArticle(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    id := vars["id"]
+
+    for index, article := range Articles {
+        if article.Id == id {
+            Articles = append(Articles[:index], Articles[index+1:]...)
+        }
+    }
+
+}
+
+func handleRequests() {
+    myRouter := mux.NewRouter().StrictSlash(true)
+    myRouter.HandleFunc("/", homePage)
+    myRouter.HandleFunc("/articles", returnAllArticles)
+    myRouter.HandleFunc("/article", createNewArticle).Methods("POST")
+    myRouter.HandleFunc("/article/{id}", deleteArticle).Methods("DELETE")
+    myRouter.HandleFunc("/article/{id}", returnSingleArticle)
+    log.Fatal(http.ListenAndServe(":10000", myRouter))
+}
+
+func main() {
+    Articles = []Article{
+        Article{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
+        Article{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
+    }
+    handleRequests()
 }
