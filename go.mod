@@ -1,0 +1,5 @@
+module go-webapp
+
+go 1.18
+
+require go.mongodb.org/mongo-driver v1.13.1 // indirect
