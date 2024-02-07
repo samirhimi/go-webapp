@@ -1,19 +1,25 @@
+
 package main
 
 
-// Importer les packages nécessaires :
+// Import Packages
 
 
 import (
     "context"
     "fmt"
     "log"
-    "go.mongodb.org/mongo-driver/mongo"
+	"time"
+	"encoding/json"
+	"net/http"
+    "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/gorilla/mux"
 )
 
 
-// Établir une connexion à la base de données
+// Connecting to the MongoDB
 
 ctx := context.TODO()
 clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
@@ -24,7 +30,7 @@ if err != nil {
 defer client.Disconnect(ctx)
 
 
-// Définir la structure du document "livre" et la collection correspondante
+// Defining the Document structure "Book"
 
 type Livre struct {
     Titre   string
@@ -35,7 +41,7 @@ type Livre struct {
 
 collection := client.Database("votre_base_de_données").Collection("livres")
 
-// Implémenter les opérations CRUD 
+// Implementing CRUD operations 
 
 nouveauLivre := Livre{
     Titre:   "Le Seigneur des Anneaux",
@@ -50,7 +56,7 @@ if err != nil {
 }
 fmt.Println("Livre inséré avec succès !")
 
-// Récupérer des livres 
+// Getting Books 
 
 func getLivres(ctx context.Context, collection *mongo.Collection) ([]Livre, error) {
     var livres []Livre
@@ -69,7 +75,7 @@ func getLivres(ctx context.Context, collection *mongo.Collection) ([]Livre, erro
 }
 
 
-// Mettre à jour un livre 
+// Updating Books
  
 
 func updateLivre(ctx context.Context, collection *mongo.Collection, filter bson.M, update bson.M) (*mongo.UpdateResult, error) {
@@ -81,7 +87,7 @@ func updateLivre(ctx context.Context, collection *mongo.Collection, filter bson.
     return result, nil
 }
 
-// Supprimer un livre
+// Removing Books
 
 func deleteLivre(ctx context.Context, collection *mongo.Collection, filter bson.M) (*mongo.DeleteResult, error) {
     result, err := collection.DeleteOne(ctx, filter)
