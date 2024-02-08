@@ -1,87 +1,88 @@
-// main.go
 package main
 
 import (
-    "encoding/json"
-    "fmt"
-    "log"
-    "io/ioutil"
-    "net/http"
-    "github.com/gorilla/mux"
+	"context"
+	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Article - Our struct for all articles
-type Article struct {
-    Id      string    `json:"Id"`
-    Title   string `json:"Title"`
-    Desc    string `json:"desc"`
-    Content string `json:"content"`
-}
+// type book struct {
+// 	ID       string `json:"id,omitempty"`
+// 	Title string `json:"book1,omitempty"`
+// 	Author string `json:"book2,omitempty"`
+// 	Quantity string `json:"book3,omitempty"`
+// }
 
-var Articles []Article
-
-func homePage(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprintf(w, "Welcome to the HomePage!")
-    fmt.Println("Endpoint Hit: homePage")
-}
-
-func returnAllArticles(w http.ResponseWriter, r *http.Request) {
-    fmt.Println("Endpoint Hit: returnAllArticles")
-    json.NewEncoder(w).Encode(Articles)
-}
-
-func returnSingleArticle(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    key := vars["id"]
-
-    for _, article := range Articles {
-        if article.Id == key {
-            json.NewEncoder(w).Encode(article)
-        }
-    }
+   type book struct {
+	ID       string `json:"id"`
+	Title    string `json:"title"`
+	Author   string `json:"author"`
+	Quantity int    `json:"quantity"`
 }
 
 
-func createNewArticle(w http.ResponseWriter, r *http.Request) {
-    // get the body of our POST request
-    // unmarshal this into a new Article struct
-    // append this to our Articles array.    
-    reqBody, _ := ioutil.ReadAll(r.Body)
-    var article Article 
-    json.Unmarshal(reqBody, &article)
-    // update our global Articles array to include
-    // our new Article
-    Articles = append(Articles, article)
-
-    json.NewEncoder(w).Encode(article)
-}
-
-func deleteArticle(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    id := vars["id"]
-
-    for index, article := range Articles {
-        if article.Id == id {
-            Articles = append(Articles[:index], Articles[index+1:]...)
-        }
-    }
-
-}
-
-func handleRequests() {
-    myRouter := mux.NewRouter().StrictSlash(true)
-    myRouter.HandleFunc("/", homePage)
-    myRouter.HandleFunc("/articles", returnAllArticles)
-    myRouter.HandleFunc("/article", createNewArticle).Methods("POST")
-    myRouter.HandleFunc("/article/{id}", deleteArticle).Methods("DELETE")
-    myRouter.HandleFunc("/article/{id}", returnSingleArticle)
-    log.Fatal(http.ListenAndServe(":10000", myRouter))
-}
+var client *mongo.Client
 
 func main() {
-    Articles = []Article{
-        Article{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
-        Article{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
-    }
-    handleRequests()
+	// Set up MongoDB connection
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	// Get server port from environment variable or use default
+	serverPort := getEnv("SERVER_PORT", "8080")
+	// Get MongoDB URI from environment variable or use default
+	mongoURI := getEnv("MONGO_URI", "mongodb://localhost:27017")
+	clientOptions := options.Client().ApplyURI(mongoURI)
+	client, _ = mongo.Connect(ctx, clientOptions)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/", GetQuestion).Methods("GET")
+	router.HandleFunc("/", SubmitAnswer).Methods("POST")
+
+	log.Printf("Starting server on port %s...", serverPort)
+	log.Fatal(http.ListenAndServe(":"+serverPort, router))
+}
+
+// Get environment variable or fallback to default
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
+// Question 1
+func GetQuestion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+//	json.NewEncoder(w).Encode("What is your favorite programming language?")
+    json.NewEncoder(w).Encode("Please enter the book informations")
+
+}
+
+// Answer 1
+func SubmitAnswer(w http.ResponseWriter, r *http.Request) {
+	var answer book
+	_ = json.NewDecoder(r.Body).Decode(&answer)
+
+	log.Printf("answer.Title: %v", answer.Title)
+	log.Printf("answer.Author: %v", answer.Author)
+	log.Printf("answer.Quantity: %v", answer.Quantity)
+
+	collection := client.Database("surveyDB").Collection("answers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	result, err := collection.InsertOne(ctx, bson.M{"Answer1": answer.Title, "Answer2": answer.Author, "Answer3": answer.Author})
+	if err != nil {
+		log.Fatalf("Error inserting answer: %v", err)
+	}
+
+	json.NewEncoder(w).Encode(result.InsertedID)
 }
