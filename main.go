@@ -14,18 +14,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// type book struct {
-// 	ID       string `json:"id,omitempty"`
-// 	Title string `json:"book1,omitempty"`
-// 	Author string `json:"book2,omitempty"`
-// 	Quantity string `json:"book3,omitempty"`
-// }
-
    type book struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Author   string `json:"author"`
-	Quantity int    `json:"quantity"`
+
+    ID       string `bson:"_id,omitempty"`
+    Title    string `bson:"title"`
+    Author   string `bson:"author"`
+    Quantity int    `bson:"quantity"`
+
 }
 
 
@@ -43,14 +38,19 @@ func main() {
 	client, _ = mongo.Connect(ctx, clientOptions)
 
 	router := mux.NewRouter()
-	router.HandleFunc("/", GetQuestion).Methods("GET")
-	router.HandleFunc("/", SubmitAnswer).Methods("POST")
-
+	
+	router.HandleFunc("/", Welcome).Methods("GET")
+    
+	router.HandleFunc("/books", GetBooks).Methods("GET")
+	
+	router.HandleFunc("/newbook", createBook).Methods("POST")
+	
 	log.Printf("Starting server on port %s...", serverPort)
 	log.Fatal(http.ListenAndServe(":"+serverPort, router))
 }
 
 // Get environment variable or fallback to default
+
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
@@ -58,30 +58,39 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// Question 1
-func GetQuestion(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-//	json.NewEncoder(w).Encode("What is your favorite programming language?")
-    json.NewEncoder(w).Encode("Please enter the book informations")
+// Welcome message
 
+func Welcome(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode("Welcome to the the BOOKSTORE")
 }
 
-// Answer 1
-func SubmitAnswer(w http.ResponseWriter, r *http.Request) {
-	var answer book
-	_ = json.NewDecoder(r.Body).Decode(&answer)
+// Getting the books
 
-	log.Printf("answer.Title: %v", answer.Title)
-	log.Printf("answer.Author: %v", answer.Author)
-	log.Printf("answer.Quantity: %v", answer.Quantity)
+func GetBooks(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode("The list of the books is below")
+}
 
-	collection := client.Database("surveyDB").Collection("answers")
+
+// Create new book
+
+func createBook(w http.ResponseWriter, r *http.Request) {
+	var newBook book
+	_ = json.NewDecoder(r.Body).Decode(&newBook)
+    
+	log.Printf("book.Id: %v", newBook.ID)
+	log.Printf("book.Title: %v", newBook.Title)
+	log.Printf("book.Author: %v", newBook.Author)
+	log.Printf("book.Quantity: %v", newBook.Quantity)
+
+	collection := client.Database("booksDB").Collection("books")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	result, err := collection.InsertOne(ctx, bson.M{"Answer1": answer.Title, "Answer2": answer.Author, "Answer3": answer.Author})
+	result, err := collection.InsertOne(ctx, bson.M{"Id": newBook.ID,"Title": newBook.Title, "Author": newBook.Author, "Quantity": newBook.Quantity})
 	if err != nil {
-		log.Fatalf("Error inserting answer: %v", err)
+		log.Fatalf("Error inserting Book: %v", err)
 	}
 
 	json.NewEncoder(w).Encode(result.InsertedID)
