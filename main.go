@@ -16,9 +16,9 @@ import (
    type book struct {
 
     ID       string `bson:"_id,omitempty"`
-    Title    string `bson:"title"`
-    Author   string `bson:"author"`
-    Quantity int    `bson:"quantity"`
+    Title    string `bson:"Title"`
+    Author   string `bson:"Author"`
+    Quantity int    `bson:"Quantity"`
 
 }
 
@@ -35,15 +35,12 @@ func main() {
 	mongoURI := getEnv("MONGO_URI", "mongodb://localhost:27017")
 	clientOptions := options.Client().ApplyURI(mongoURI)
 	client, _ = mongo.Connect(ctx, clientOptions)
-
-	router := mux.NewRouter()
-	
+    router := mux.NewRouter()
 	router.HandleFunc("/", Welcome).Methods("GET")
-    
-	router.HandleFunc("/books", GetBooks).Methods("GET")
-	
+    router.HandleFunc("/books", GetBooks).Methods("GET")
 	router.HandleFunc("/newbook", createBook).Methods("POST")
-	
+	router.HandleFunc("/books/{id}", DeleteBook).Methods("DELETE")
+	log.Println("Connected to MongoDB")
 	log.Printf("Starting server on port %s...", serverPort)
 	log.Fatal(http.ListenAndServe(":"+serverPort, router))
 }
@@ -102,7 +99,24 @@ func createBook(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode("Book created successfully")
 }
 
+// Delete book by ID
 
+func DeleteBook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	id := params["id"]
+
+	collection := client.Database("booksDB").Collection("books")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		log.Fatalf("Error deleting book: %v", err)
+	}
+
+	json.NewEncoder(w).Encode("Book deleted successfully")
+}
 
 
 
