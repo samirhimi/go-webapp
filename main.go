@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -49,6 +48,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+serverPort, router))
 }
 
+
 // Get environment variable or fallback to default
 
 func getEnv(key, fallback string) string {
@@ -59,39 +59,53 @@ func getEnv(key, fallback string) string {
 }
 
 // Welcome message
-
 func Welcome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode("Welcome to the the BOOKSTORE")
+	json.NewEncoder(w).Encode("Welcome to the Book Store!")
 }
 
 // Getting the books
-
 func GetBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode("The list of the books is below")
-}
-
-
-// Create new book
-
-func createBook(w http.ResponseWriter, r *http.Request) {
-	var newBook book
-	_ = json.NewDecoder(r.Body).Decode(&newBook)
-    
-	log.Printf("book.Id: %v", newBook.ID)
-	log.Printf("book.Title: %v", newBook.Title)
-	log.Printf("book.Author: %v", newBook.Author)
-	log.Printf("book.Quantity: %v", newBook.Quantity)
 
 	collection := client.Database("booksDB").Collection("books")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	result, err := collection.InsertOne(ctx, bson.M{"Id": newBook.ID,"Title": newBook.Title, "Author": newBook.Author, "Quantity": newBook.Quantity})
+	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
-		log.Fatalf("Error inserting Book: %v", err)
+		log.Fatalf("Error finding Books: %v", err)
 	}
 
-	json.NewEncoder(w).Encode(result.InsertedID)
+	var books []book
+	if err = cursor.All(ctx, &books); err != nil {
+		log.Fatalf("Error decoding Books: %v", err)
+	}
+	json.NewEncoder(w).Encode("The list of the books is below")
+	json.NewEncoder(w).Encode(books)
 }
+
+// Create new book
+func createBook(w http.ResponseWriter, r *http.Request) {
+	var newBook book
+	json.NewDecoder(r.Body).Decode(&newBook)
+	collection := client.Database("booksDB").Collection("books")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := collection.InsertOne(ctx, newBook)
+	if err != nil {
+		log.Fatalf("Error inserting book: %v", err)
+	}
+	json.NewEncoder(w).Encode(newBook)
+	log.Printf("Book created: %v", newBook)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode("Book created successfully")
+}
+
+
+
+
+
+
+
+
