@@ -7,21 +7,19 @@ import (
 	"net/http"
 	"os"
 	"time"
+
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-   type book struct {
-
-    ID       string `bson:"_id,omitempty"`
-    Title    string `bson:"Title"`
-    Author   string `bson:"Author"`
-    Quantity int    `bson:"Quantity"`
-
+type book struct {
+	ID       string `bson:"_id,omitempty"`
+	Title    string `bson:"Title"`
+	Author   string `bson:"Author"`
+	Quantity int    `bson:"Quantity"`
 }
-
 
 var client *mongo.Client
 
@@ -30,21 +28,20 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	// Get server port from environment variable or use default
-	serverPort := getEnv("SERVER_PORT", "8080")
+	serverPort := getEnv("SERVER_PORT", "80")
 	// Get MongoDB URI from environment variable or use default
 	mongoURI := getEnv("MONGO_URI", "mongodb://localhost:27017")
 	clientOptions := options.Client().ApplyURI(mongoURI)
 	client, _ = mongo.Connect(ctx, clientOptions)
-    router := mux.NewRouter()
+	router := mux.NewRouter()
 	router.HandleFunc("/", Welcome).Methods("GET")
-    router.HandleFunc("/books", GetBooks).Methods("GET")
+	router.HandleFunc("/books", GetBooks).Methods("GET")
 	router.HandleFunc("/newbook", createBook).Methods("POST")
 	router.HandleFunc("/books/{id}", DeleteBook).Methods("DELETE")
 	log.Println("Connected to MongoDB")
 	log.Printf("Starting server on port %s...", serverPort)
 	log.Fatal(http.ListenAndServe(":"+serverPort, router))
 }
-
 
 // Get environment variable or fallback to default
 
@@ -117,9 +114,3 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode("Book deleted successfully")
 }
-
-
-
-
-
-
