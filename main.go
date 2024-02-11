@@ -28,7 +28,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	// Get server port from environment variable or use default
-	serverPort := getEnv("SERVER_PORT", "80")
+	serverPort := getEnv("SERVER_PORT", "8080")
 	// Get MongoDB URI from environment variable or use default
 	mongoURI := getEnv("MONGO_URI", "mongodb://localhost:27017")
 	clientOptions := options.Client().ApplyURI(mongoURI)
