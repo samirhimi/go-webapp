@@ -30,7 +30,8 @@ func main() {
 	// Get server port from environment variable or use default
 	serverPort := getEnv("SERVER_PORT", "8080")
 	// Get MongoDB URI from environment variable or use default
-	mongoURI := getEnv("MONGO_URI", "mongodb://localhost:27017")
+	// mongoURI := getEnv("MONGO_URI", "mongodb://localhost:27017")
+	mongoURI := getEnv("MONGO_URI", "mongodb://mongodb.application.svc.cluster.local:27017")
 	clientOptions := options.Client().ApplyURI(mongoURI)
 	client, _ = mongo.Connect(ctx, clientOptions)
 	router := mux.NewRouter()
