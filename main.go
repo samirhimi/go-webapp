@@ -37,6 +37,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/", Welcome).Methods("GET")
 	router.HandleFunc("/books", GetBooks).Methods("GET")
+	router.HandleFunc("/books/{id}", GetBook).Methods("GET")
 	router.HandleFunc("/newbook", createBook).Methods("POST")
 	router.HandleFunc("/books/{id}", DeleteBook).Methods("DELETE")
 	log.Println("Connected to MongoDB")
@@ -80,7 +81,28 @@ func GetBooks(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(books)
 }
 
+// Get book by ID
+
+func GetBook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	id := params["id"]
+
+	collection := client.Database("booksDB").Collection("books")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var book book
+	err := collection.FindOne(ctx, bson.M{"_id": id}).Decode(&book)
+	if err != nil {
+		log.Fatalf("Error finding book: %v", err)
+	}
+
+	json.NewEncoder(w).Encode(book)
+}
+
 // Create new book
+
 func createBook(w http.ResponseWriter, r *http.Request) {
 	var newBook book
 	json.NewDecoder(r.Body).Decode(&newBook)
